@@ -36,124 +36,82 @@ try {
         $sheet2->setTitle('sheet2');
     }
 
-    // 1. 设置列宽
-    $columnWidths = [
-        'A' => 4,     // 序号
-        'B' => 8,     // 姓名
-        'C' => 12,    // 职务(岗位)工资
-        'D' => 12,    // 级别(技术等级、薪级)工资
-        'E' => 8,     // 地区补贴
-        'F' => 8,     // 保留补贴
-        'G' => 8,     // 其他
-        'H' => 10,    // 基本工资合计
-        'I' => 8,     // 扣养老保险
-        'J' => 8,     // 扣职业年金
-        'K' => 8,     // 扣住房公积金
-        'L' => 8,     // 扣医疗保险
-        'M' => 8,     // 扣大额医疗
-        'N' => 8,     // 扣个人所得税
-        '0' => 10,    // 基本工资实发合计
-        'P' => 8,     // 基础性绩效
-        'Q' => 8,     // 取暖费
-        'R' => 8,     // 实际执行工资
-        'S' => 10     // 实发合计
-    ];
-
-    foreach ($columnWidths as $col => $width) {
-        $sheet2->getColumnDimension($col)->setWidth($width);
-    }
-
-    // 2. 设置标题
-    $month = date('n');
-    $sheet2->setCellValue('A1', $month . '月份工资明细及汇总表');
-    $sheet2->mergeCells('A1:U1');
-
-    // 3. 设置表头
-    $headers = [
-        'A2' => '序号',
-        'B2' => '姓名',
-        'C2' => '职务(岗位)工资',
-        'D2' => '级别(技术等级、薪级)工资',
-        'E2' => '地区补贴',
-        'F2' => '保留补贴',
-        'G2' => '其他',
-        'I2' => '基本工资合计',
-        'J2' => '扣养老保险',
-        'K2' => '扣职业年金',
-        'L2' => '扣住房公积金',
-        'M2' => '扣医疗保险',
-        'N2' => '扣大额医疗',
-        'O2' => '扣个人所得税',
-        'Q2' => '基本工资实发合计',
-        'R2' => '基础性绩效',
-        'S2' => '取暖费',
-        'T2' => '实际执行工资',
-        'U2' => '实发合计'
-    ];
-
-    foreach ($headers as $cell => $value) {
-        $sheet2->setCellValue($cell, $value);
-    }
-
     // 4. 复制数据（从第3行开始）
     $templateData = $templateSheet->toArray();
+    // 根据模板数据，动态设置表头和列宽
+    $allHeaders = $templateData[1];
+    // 数组取交集，得到需要输出的字段
+    $headers = array_intersect($allHeaders, ['序号', '姓名', '职务（岗位）工资', '级别（技术等级、薪级）工资', '地区补贴', '保留补贴', '其他', '基本工资合计', '扣养老保险', '扣职业年金', '扣住房公积金', '扣医疗保险', '扣大额医疗', '扣个人所得税', '基本工资实发合计', '基础性绩效', '取暖费', '实际执行工资', '实发合计', '补发工资', '降温费']);
+    // 总列数
+    $count = count($headers);
+    // 确保列数不超过 26
+    if ($count > 26) {
+        throw new Exception('输出字段数量超过最大列数限制');
+    }
+    // 把序号转化为字母
+    $stringMap = range('A', 'Z'); // 使用 range 函数生成字母数组
+    $maxCol = $stringMap[$count - 1];
+
+    // 设置标题
+    // 月份根据模板工资月份列获取
+    $monthStr = $templateSheet->getCell('C3')->getValueString();
+    $month = explode('-', $monthStr)[1];
+    $sheet2->setCellValue('A1', $month . '月份工资明细及汇总表');
+    $sheet2->mergeCells('A1:' . $maxCol . '1');
+
+    // 设置表头
+    $widthMap = [
+        '序号' => 6,
+        '姓名' => 8,
+        '职务（岗位）工资' => 10,
+        '级别（技术等级、薪级）工资' => 10,
+        '地区补贴' => 6,
+        '保留补贴' => 6,
+        '其他' => 8,
+        '基本工资合计' => 10,
+        '扣养老保险' => 10,
+        '扣职业年金' => 8,
+        '扣住房公积金' => 8,
+        '扣医疗保险' => 8,
+        '扣大额医疗' => 6,
+        '扣个人所得税' => 6,
+        '基本工资实发合计' => 12,
+        '基础性绩效' => 8,
+        '取暖费' => 8,
+        '实际执行工资' => 10,
+        '实发合计' => 10,
+        '补发工资' => 4,
+        '降温费' => 8,
+    ];
+    $column = 'A';
+    foreach ($headers as $col => $value) {
+        // 设置列宽，确保内容完整显示
+        // $width = min(max(4, strlen($value)), 10); // 动态设置列宽，最多10
+        $width = $widthMap[$value];
+        $sheet2->getColumnDimension($column)->setWidth($width);
+        // 设置表头
+        $sheet2->setCellValue($column . '2', $value);
+        $column++;
+    }
     $dataStartRow = 3;
     $rowNumber = 1;
-
-    foreach (array_slice($templateData, 1) as $rowIndex => $row) {
-        // 跳过第一行（工资性质等信息）
-        if ($rowIndex === 0) {
-            continue;
+    foreach (array_slice($templateData, 2) as $rowIndex => $row) {
+        $column = 'A';
+        // 根据headers循环输出
+        foreach ($headers as $key => $value) {
+            // 检查行和列是否有效
+            $val = isset($row[$key]) && !empty($row[$key]) ? $row[$key] : '';
+            $sheet2->setCellValue($column . ($rowNumber + 2), $val);
+            $column++;
         }
-
-        // 检查是否为空行
-        if (empty($row[6]) && empty($row[7]) && empty($row[8])) { // 检查姓名和相关字段
-            continue;
-        }
-
-        $currentRow = $dataStartRow + $rowNumber - 1;
-
-        // 设置序号
-        $sheet2->setCellValue('A' . $currentRow, $rowNumber);
-
-        // 映射数据到对应的列（根据实际数据位置更新）
-        $columnMapping = [
-            'B' => 6,  // 姓名 (第7列)
-            'C' => 15, // 职务(岗位)工资 (第14列)
-            'D' => 16, // 级别工资 (第15列)
-            'E' => 17, // 地区补贴 (第17列)
-            'F' => 18, // 保留补贴 (第18列)
-            'G' => 19, // 其他 (第19列)
-            'I' => 21, // 基本工资合计
-            'J' => 22, // 扣养老保险
-            'K' => 23, // 扣职业年金
-            'L' => 23, // 扣住房公积金
-            'M' => 24, // 扣医疗保险
-            'N' => 25, // 扣大额医疗
-            'O' => 26, // 扣个人所得税
-            'Q' => 28, // 基本工资实发合计
-            'R' => 29, // 基础性绩效
-            'S' => 31, // 取暖费
-            'T' => 33, // 实际执行工资
-            'U' => 34  // 实发合计
-        ];
-
-        foreach ($columnMapping as $targetCol => $sourceIndex) {
-            if (isset($row[$sourceIndex])) {
-                $value = $row[$sourceIndex];
-                // 如果是数字，确保格式正确
-                if (is_numeric($value)) {
-                    $value = floatval($value);
-                }
-                $sheet2->setCellValue($targetCol . $currentRow, $value);
-            }
-        }
-
         $rowNumber++;
     }
 
     // 5. 设置整体样式
     $lastRow = $sheet2->getHighestRow();
+    if ($lastRow < 1) {
+        throw new Exception('没有有效的数据行');
+    }
     $styleArray = [
         'font' => [
             'name' => '宋体',
@@ -171,7 +129,7 @@ try {
             ]
         ]
     ];
-    $sheet2->getStyle('A1:U' . $lastRow)->applyFromArray($styleArray);
+    $sheet2->getStyle('A1:' . $maxCol . $lastRow)->applyFromArray($styleArray);
 
     // 6. 设置标题样式
     $sheet2->getStyle('A1')->applyFromArray([
@@ -183,7 +141,7 @@ try {
     ]);
 
     // 7. 设置表头样式
-    $sheet2->getStyle('A2:U2')->applyFromArray([
+    $sheet2->getStyle('A2:' . $maxCol . '2')->applyFromArray([
         'font' => [
             'name' => '宋体',
             'size' => 9,
@@ -197,13 +155,13 @@ try {
 
     // 8. 设置数字格式
     $numberFormat = '#,##0.00';
-    $sheet2->getStyle('C3:U' . $lastRow)->getNumberFormat()->setFormatCode($numberFormat);
+    $sheet2->getStyle('C3:' . $maxCol . $lastRow)->getNumberFormat()->setFormatCode($numberFormat);
 
     // 9. 设置行高
-    $sheet2->getRowDimension(1)->setRowHeight(30);
-    $sheet2->getRowDimension(2)->setRowHeight(40);
+    $sheet2->getRowDimension(1)->setRowHeight(25);
+    $sheet2->getRowDimension(2)->setRowHeight(30);
     for ($i = 3; $i <= $lastRow; $i++) {
-        $sheet2->getRowDimension($i)->setRowHeight(25);
+        $sheet2->getRowDimension($i)->setRowHeight(23);
     }
 
     // 10. 设置打印格式
@@ -243,6 +201,8 @@ try {
     ]);
 
 } catch (Exception $e) {
+    var_dump($e);
+    die;
     echo json_encode([
         'success' => false,
         'message' => '处理失败：' . $e->getMessage()
