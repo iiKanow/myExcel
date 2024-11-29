@@ -73,6 +73,10 @@
                 <input type="file" name="excel_file" accept=".xlsx,.xls" required>
                 <button type="submit">转换工资模板</button>
             </form>
+            <div id="downloadLinks" style="display: none;">
+                <a id="detailLink" class="btn" target="_blank">下载工资明细表</a>
+                <a id="templateLink" class="btn" target="_blank">下载工资指标分配明细表</a>
+            </div>
         </div>
 
         <div id="result"></div>
@@ -123,17 +127,25 @@
             .then(response => response.json())
             .then(data => {
                 var resultDiv = document.getElementById('result');
+                var downloadLinks = document.getElementById('downloadLinks');
                 resultDiv.style.display = 'block';
                 
                 if (data.success) {
+                    // 显示下载链接
+                    downloadLinks.style.display = 'block';
+                    document.getElementById('detailLink').href = data.file_path;
+                    document.getElementById('templateLink').href = data.file_path2;
+                    
                     resultDiv.innerHTML = '<h3>转换成功！</h3>' +
-                        '<p>文件已保存，<a href="' + data.file_path + '">点击下载</a></p>';
+                        '<p>文件已生成，请点击上方按钮下载。</p>';
                 } else {
+                    downloadLinks.style.display = 'none';
                     resultDiv.innerHTML = '<h3>转换失败</h3><p>' + data.message + '</p>';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                document.getElementById('downloadLinks').style.display = 'none';
                 document.getElementById('result').innerHTML = 
                     '<h3>错误</h3><p>转换过程中发生错误</p>';
             });

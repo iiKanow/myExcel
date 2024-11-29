@@ -86,25 +86,32 @@ try {
     $column = 'A';
     foreach ($headers as $col => $value) {
         // 设置列宽，确保内容完整显示
-        // $width = min(max(4, strlen($value)), 10); // 动态设置列宽，最多10
         $width = $widthMap[$value];
+        $width = isset($widthMap[$value]) ? $widthMap[$value] : 10;  // 默认宽度为 10
         $sheet2->getColumnDimension($column)->setWidth($width);
         // 设置表头
         $sheet2->setCellValue($column . '2', $value);
         $column++;
     }
     $dataStartRow = 3;
-    $rowNumber = 1;
+    $other = $basicSalary = $warmOrCoolingSalary = 0;
+    $total = count($templateData);
+    // 翻转index和字段名对应
+    $columnNameIndexMap = array_flip($headers);
     foreach (array_slice($templateData, 2) as $rowIndex => $row) {
         $column = 'A';
         // 根据headers循环输出
         foreach ($headers as $key => $value) {
             // 检查行和列是否有效
             $val = isset($row[$key]) && !empty($row[$key]) ? $row[$key] : '';
-            $sheet2->setCellValue($column . ($rowNumber + 2), $val);
+            $sheet2->setCellValue($column . ($rowIndex + 3), $val);
             $column++;
         }
-        $rowNumber++;
+        if ($rowIndex + 3 == $total) {
+            $other = $row[$columnNameIndexMap['其他']];
+            $basicSalary = $row[$columnNameIndexMap['基本工资合计']];
+            $warmOrCoolingSalary = (isset($columnNameIndexMap['取暖费']) && isset($row[$columnNameIndexMap['取暖费']]) && $row[$columnNameIndexMap['取暖费']] ? $row[$columnNameIndexMap['取暖费']] : 0) + (isset($columnNameIndexMap['降温费']) && isset($row[$columnNameIndexMap['降温费']]) && $row[$columnNameIndexMap['降温费']] ? $row[$columnNameIndexMap['降温费']] : 0);
+        }
     }
 
     // 5. 设置整体样式
@@ -190,19 +197,51 @@ try {
         mkdir($outputDir, 0777, true);
     }
 
-    $outputFile = $outputDir . '/' . $month . '月份工资明细表_' . date('YmdHis') . '.xlsx';
+    $outputFile = $outputDir . '/' . $month . '月份工资明细表_' . date('Ymd') . '.xlsx';
     $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
     $writer->save($outputFile);
+
+    // 处理工资指标分配明细表
+    // 读取 Excel 文件
+    $inputFileName = '/Users/surge/Desktop/防汛办12月份工资指标分配明细表.xls'; // 输入文件名
+    $spreadsheet = IOFactory::load($inputFileName);
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // 遍历行并修改特定字段
+    foreach ($sheet->getRowIterator() as $row) {
+        $cellIterator = $row->getCellIterator();
+        $cellIterator->setIterateOnlyExistingCells(false); // 允许遍历所有单元格
+
+        foreach ($cellIterator as $cell) {
+            if ($cell->getColumn() == 'H') {
+                if ($row->getRowIndex() == 1) {
+                    $cell->setValue($month . '月份工资明细');
+                } elseif ($row->getRowIndex() == 2) {
+                    $cell->setValue($other + $basicSalary + $warmOrCoolingSalary + 83131.64);
+                } elseif ($row->getRowIndex() == 4) {
+                    $cell->setValue($basicSalary);
+                } elseif ($row->getRowIndex() == 6) {
+                    $cell->setValue($warmOrCoolingSalary);
+                } elseif ($row->getRowIndex() == 10) {
+                    $cell->setValue($other);
+                }
+            }
+        }
+    }
+
+    // 保存修改后的文件
+    $outputFile2 = $outputDir . '/' . $month . '月份工资指标分配明细表_' . date('Ymd') . '.xlsx';
+    $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+    $writer->save($outputFile2);
 
     echo json_encode([
         'success' => true,
         'message' => '转换成功',
-        'file_path' => $outputFile
+        'file_path' => $outputFile,
+        'file_path2' => $outputFile2
     ]);
 
 } catch (Exception $e) {
-    var_dump($e);
-    die;
     echo json_encode([
         'success' => false,
         'message' => '处理失败：' . $e->getMessage()
