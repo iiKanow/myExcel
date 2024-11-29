@@ -19,7 +19,9 @@ $sheet = $spreadsheet->getActiveSheet();
 // 写入数据
 foreach ($data as $rowIndex => $row) {
     foreach ($row as $columnIndex => $value) {
-        $sheet->setCellValueByColumnAndRow($columnIndex + 1, $rowIndex + 1, $value);
+        // 使用 setCellValue 方法，转换列索引为字母
+        $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex + 1);
+        $sheet->setCellValue($columnLetter . ($rowIndex + 1), $value); // 修改为有效的单元格坐标
     }
 }
 
