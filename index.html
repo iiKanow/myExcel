@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Excel导入导出测试</title>
+    <title>Excel处理工具</title>
+    <meta charset="UTF-8">
     <style>
         body { 
             padding: 20px; 
@@ -48,18 +49,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>Excel导入导出测试</h1>
+        <h1>Excel处理工具</h1>
         
         <!-- 导出功能 -->
         <div class="form-group">
             <h2>导出Excel</h2>
-            <a href="/excel/export" class="btn">导出示例数据</a>
+            <a href="export.php" class="btn">导出示例数据</a>
         </div>
         
         <!-- 导入功能 -->
         <div class="form-group">
             <h2>导入Excel</h2>
-            <form id="uploadForm" action="/excel/import" method="post" enctype="multipart/form-data">
+            <form id="uploadForm" action="import.php" method="post" enctype="multipart/form-data">
                 <input type="file" name="excel_file" accept=".xlsx,.xls" required>
                 <button type="submit">导入Excel</button>
             </form>
@@ -68,23 +69,23 @@
         <!-- 工资明细模板转换 -->
         <div class="form-group">
             <h2>工资明细模板转换</h2>
-            <form id="salaryTemplateForm" action="/excel/convert-salary-template" method="post" enctype="multipart/form-data">
+            <form id="convertForm" action="convert.php" method="post" enctype="multipart/form-data">
                 <input type="file" name="excel_file" accept=".xlsx,.xls" required>
                 <button type="submit">转换工资模板</button>
             </form>
         </div>
 
-        <!-- 显示导入结果 -->
         <div id="result"></div>
     </div>
 
     <script>
+        // 导入Excel处理
         document.getElementById('uploadForm').onsubmit = function(e) {
             e.preventDefault();
             
             var formData = new FormData(this);
             
-            fetch('/excel/import', {
+            fetch('import.php', {
                 method: 'POST',
                 body: formData
             })
@@ -109,12 +110,13 @@
             return false;
         };
 
-        document.getElementById('salaryTemplateForm').onsubmit = function(e) {
+        // 工资模板转换处理
+        document.getElementById('convertForm').onsubmit = function(e) {
             e.preventDefault();
             
             var formData = new FormData(this);
             
-            fetch('/excel/convert-salary-template', {
+            fetch('convert.php', {
                 method: 'POST',
                 body: formData
             })
@@ -124,7 +126,8 @@
                 resultDiv.style.display = 'block';
                 
                 if (data.success) {
-                    resultDiv.innerHTML = '<h3>转换成功！</h3><p>文件已保存，请查看sheet2</p>';
+                    resultDiv.innerHTML = '<h3>转换成功！</h3>' +
+                        '<p>文件已保存，<a href="' + data.file_path + '">点击下载</a></p>';
                 } else {
                     resultDiv.innerHTML = '<h3>转换失败</h3><p>' + data.message + '</p>';
                 }
